@@ -130,7 +130,7 @@ echo.
 echo Step 12: Disable Unnecessary Scheduled Tasks (e.g., Error Reporting)
 set /p choice="Do you want to disable unnecessary scheduled tasks (e.g., Windows Error Reporting)? (Y/N): "
 if /i "%choice%"=="Y" (
-    schtasks /Change /TN "Microsoft\Windows\Windows Error Reporting\Error Reporting Service" /Disable
+    schtasks /Change /TN "\Microsoft\Windows\Windows Error Reporting\QueueReporting" /Disable
     echo Unnecessary scheduled tasks have been disabled.
 ) else (
     echo Skipping scheduled tasks disable.
@@ -167,6 +167,8 @@ if /i "%choice%"=="Y" (
     net accounts /minpwlen:12
     net accounts /maxpwage:30
     net accounts /uniquepw:5
+    net accounts /minpwage:1
+    net accounts /lockoutthreshold:5
     echo Password policy has been updated.
 ) else (
     echo Skipping password policy setup.
@@ -188,7 +190,7 @@ echo.
 echo Step 17: Enable Audit for Privileged Account Changes
 set /p choice="Do you want to enable audit for privileged account changes? (Y/N): "
 if /i "%choice%"=="Y" (
-    auditpol /set /subcategory:"Account Logon/Logoff" /success:enable /failure:enable
+    auditpol /set /subcategory:"User Account Management" /success:enable /failure:enable
     echo Audit for privileged account changes has been enabled.
 ) else (
     echo Skipping privileged account changes audit.
@@ -200,4 +202,77 @@ echo Step 18: Disable Cortana and Search Indexing
 set /p choice="Do you want to disable Cortana and search indexing? (Y/N): "
 if /i "%choice%"=="Y" (
     reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t REG_DWORD /d "0" /f
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "
+    sc config "WSearch" start= disabled
+    sc stop "WSearch"
+    echo Cortana and Search Indexing have been disabled.
+) else (
+    echo Skipping Cortana and Search Indexing disable.
+)
+
+:: Step 19: Enable BitLocker Encryption (Optional)
+echo.
+echo Step 19: Enable BitLocker Encryption
+set /p choice="Do you want to enable BitLocker encryption on the system drive? (Y/N): "
+if /i "%choice%"=="Y" (
+    manage-bde -on C: -RecoveryPassword
+    echo BitLocker encryption has been enabled on the system drive.
+) else (
+    echo Skipping BitLocker encryption.
+)
+
+:: Step 20: Disable Guest Account
+echo.
+echo Step 20: Disable Guest Account
+set /p choice="Do you want to disable the Guest account? (Y/N): "
+if /i "%choice%"=="Y" (
+    net user Guest /active:no
+    echo Guest account has been disabled.
+) else (
+    echo Skipping Guest account disable.
+)
+
+:: Step 21: Remove Unused User Accounts
+echo.
+echo Step 21: Remove Unused User Accounts
+set /p choice="Do you want to list and remove unused user accounts? (Y/N): "
+if /i "%choice%"=="Y" (
+    echo The following user accounts are present:
+    net user
+    echo.
+    set /p userToDelete="Enter the username to delete (or type 'skip' to continue): "
+    if /i not "%userToDelete%"=="skip" (
+        net user "%userToDelete%" /delete
+        echo User account '%userToDelete%' has been deleted.
+    ) else (
+        echo Skipping user account deletion.
+    )
+) else (
+    echo Skipping unused user accounts removal.
+)
+
+:: Step 22: Configure Windows Update to Automatic
+echo.
+echo Step 22: Configure Windows Update to Automatic
+set /p choice="Do you want to set Windows Update to automatic? (Y/N): "
+if /i "%choice%"=="Y" (
+    reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update" /v "AUOptions" /t REG_DWORD /d "4" /f
+    echo Windows Update has been set to automatic.
+) else (
+    echo Skipping Windows Update configuration.
+)
+
+:: Step 23: Enable Network Level Authentication for Remote Desktop
+echo.
+echo Step 23: Enable Network Level Authentication for Remote Desktop
+set /p choice="Do you want to enable Network Level Authentication for Remote Desktop? (Y/N): "
+if /i "%choice%"=="Y" (
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v "UserAuthentication" /t REG_DWORD /d "1" /f
+    echo Network Level Authentication has been enabled.
+) else (
+    echo Skipping NLA configuration.
+)
+
+:: Completion Message
+echo.
+echo Windows 10 security hardening script has completed.
+pause
